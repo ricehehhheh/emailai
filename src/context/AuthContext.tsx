@@ -1,53 +1,48 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import {
-  User,
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut,
-} from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase/client';
+
+const API_BASE = 'http://localhost:8000';
 
 interface AuthContextType {
-  user: User | null;
+  token: string | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  logout: () => Promise<void>;
+  signInWithGoogle: () => void;
+  logout: () => void;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-    return unsubscribe;
+    // Check localStorage for existing token
+    const saved = localStorage.getItem('auth_token');
+    if (saved) setToken(saved);
+    setLoading(false);
   }, []);
 
-  const signInWithGoogle = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error('Sign in error:', error);
-    }
+  const signInWithGoogle = () => {
+    window.location.href = `${API_BASE}/auth/login?app=nextjs`;
   };
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+  const logout = () => {
+    localStorage.removeItem('auth_token');
+    setToken(null);
+    window.location.href = '/signin';
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{
+      token,
+      loading,
+      signInWithGoogle,
+      logout,
+      isAuthenticated: !!token,
+    }}>
       {children}
     </AuthContext.Provider>
   );
